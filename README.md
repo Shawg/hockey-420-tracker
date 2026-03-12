@@ -111,21 +111,15 @@ EMAIL_FROM=your_email@gmail.com
 EMAIL_TO=friend1@example.com,friend2@example.com
 ```
 
-## Setting Up the Daily Cron Job
+## Auto-Start on Boot (Recommended)
 
-### Option 1: Using Crontab
+To ensure the tracker runs automatically even if your Raspberry Pi reboots, you have two options:
 
-```bash
-# Edit crontab
-crontab -e
+### Option 1: Systemd Timer (Recommended)
 
-# Add this line to run at 10 AM daily:
-0 10 * * * cd /home/pi/hockey-420-tracker && /usr/bin/python3 /home/pi/hockey-420-tracker/main.py >> /home/pi/hockey-420-tracker.log 2>&1
-```
+This is the most robust option - it handles reboots automatically and includes logging.
 
-### Option 2: Using Systemd (Recommended)
-
-Create a systemd service file:
+#### Step 1: Create the Service File
 
 ```bash
 sudo nano /etc/systemd/system/hockey-420-tracker.service
@@ -151,7 +145,7 @@ StandardError=append:/home/pi/hockey-420-tracker.log
 WantedBy=multi-user.target
 ```
 
-Create a timer to run daily at 10 AM:
+#### Step 2: Create the Timer File
 
 ```bash
 sudo nano /etc/systemd/system/hockey-420-tracker.timer
@@ -171,7 +165,7 @@ Persistent=true
 WantedBy=timers.target
 ```
 
-Enable and start the timer:
+#### Step 3: Enable and Start
 
 ```bash
 sudo systemctl daemon-reload
@@ -179,11 +173,59 @@ sudo systemctl enable hockey-420-tracker.timer
 sudo systemctl start hockey-420-tracker.timer
 ```
 
-Check status:
+#### Step 4: Verify It's Running
 
 ```bash
+# Check timer status
 sudo systemctl status hockey-420-tracker.timer
+
+# List all timers
+systemctl list-timers
+
+# View logs
+journalctl -u hockey-420-tracker -f
 ```
+
+#### Why Systemd is Recommended:
+- ✅ Automatically starts on boot
+- ✅ Automatically restarts after failures (with `Restart=on-failure` added)
+- ✅ Built-in logging via journalctl
+- ✅ Survives reboots seamlessly
+- ✅ Professional, reliable
+
+#### Optional: Add Auto-Restart on Failure
+
+Edit the service file to add restart capability:
+
+```ini
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/hockey-420-tracker
+ExecStart=/usr/bin/python3 /home/pi/hockey-420-tracker/main.py
+StandardOutput=append:/home/pi/hockey-420-tracker.log
+StandardError=append:/home/pi/hockey-420-tracker.log
+Restart=on-failure
+RestartSec=60
+```
+
+Then reload: `sudo systemctl daemon-reload`
+
+---
+
+### Option 2: Simple Cron (Lightweight)
+
+For simplicity, you can use cron instead:
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add this line to run at 10 AM daily:
+0 10 * * * cd /home/pi/hockey-420-tracker && /usr/bin/python3 /home/pi/hockey-420-tracker/main.py >> /home/pi/hockey-420-tracker.log 2>&1
+```
+
+**Note:** Cron will run on schedule but won't automatically restart if the Pi reboots. The systemd option above is better for unattended operation.
 
 ## Viewing Logs
 
@@ -212,7 +254,20 @@ journalctl -u hockey-420-tracker -f
 - Check the chat ID is correct (must be negative for groups)
 - Test with: `curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates"`
 
-### Cron job not running
+### Systemd timer not running
+
+- Check timer status: `sudo systemctl status hockey-420-tracker.timer`
+- Check service logs: `journalctl -u hockey-420-tracker`
+- Verify the timer is enabled: `systemctl list-timers --all`
+- Reload systemd after changes: `sudo systemctl daemon-reload`
+
+### Application not running after Raspberry Pi reboot
+
+- Verify systemd timer is enabled: `systemctl list-timers --all | grep hockey`
+- Check that the .env file exists in the project directory
+- Verify Python path in the service file matches your system: `which python3`
+
+### Cron job not running (if using cron)
 
 - Check cron is enabled: `sudo systemctl status cron`
 - Verify the cron entry: `crontab -l`
