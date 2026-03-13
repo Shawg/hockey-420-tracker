@@ -46,13 +46,34 @@ class NHLClient:
             response.raise_for_status()
             data = response.json()
 
-            games = []
+            all_games = []
             for game_week in data.get("gameWeek", []):
                 for day in game_week.get("games", []):
-                    games.append(day)
+                    all_games.append(day)
 
-            logger.info(f"Found {len(games)} games for {date_str}")
-            return games
+            # The NHL schedule endpoint returns an entire "gameWeek" (roughly a
+            # 7-day span) rather than strictly the single date requested.  that
+            # means when you ask for e.g. 2026-03-11 you'll also get games on
+            # 2026-03-14, etc.  our tracker is only supposed to look at games
+            # that actually occurred on the target date, so filter accordingly.
+            filtered = []
+            for g in all_games:
+                start = g.get("startTimeUTC")
+                if not start:
+                    # just in case the API response is missing the field,
+                    # include the game to avoid silently dropping it
+                    filtered.append(g)
+                    continue
+                try:
+                    game_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+                except Exception:
+                    filtered.append(g)
+                    continue
+                if game_dt.date() == date.date():
+                    filtered.append(g)
+
+            logger.info(f"Found {len(filtered)} games for {date_str} (filtered from {len(all_games)})")
+            return filtered
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to fetch schedule for {date_str}: {e}")
             return []

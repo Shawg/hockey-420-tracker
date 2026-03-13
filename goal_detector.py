@@ -26,6 +26,7 @@ class GoalDetector:
     ) -> List[Dict[str, Any]]:
         """
         Find all goals scored at exactly 4:20 in any period.
+        Checks both elapsed time (timeInPeriod) and remaining time (timeRemaining).
 
         Args:
             plays: List of plays from play-by-play data.
@@ -44,15 +45,22 @@ class GoalDetector:
                 continue
 
             time_in_period = play.get("timeInPeriod", "")
-
-            if time_in_period == self.target_time:
+            time_remaining = play.get("timeRemaining", "")
+            
+            # Check for 4:20 elapsed OR 4:20 remaining
+            is_420_elapsed = time_in_period == self.target_time
+            is_420_remaining = time_remaining == self.target_time
+            
+            if is_420_elapsed or is_420_remaining:
+                time_condition = "elapsed" if is_420_elapsed else "remaining"
                 goal_info = self._extract_goal_info(
-                    play, home_team, away_team, home_id, away_id
+                    play, home_team, away_team, home_id, away_id, time_condition
                 )
                 goals_420.append(goal_info)
                 logger.info(
                     f"Found 4:20 goal: {goal_info['team']} - "
-                    f"Period {goal_info['period']}"
+                    f"Period {goal_info['period']} - "
+                    f"{time_condition} time"
                 )
 
         return goals_420
@@ -68,7 +76,8 @@ class GoalDetector:
         home_team: str,
         away_team: str,
         home_id: int = 0,
-        away_id: int = 0
+        away_id: int = 0,
+        time_condition: str = "elapsed"
     ) -> Dict[str, Any]:
         """Extract relevant information from a goal play."""
         details = play.get("details", {})
@@ -94,13 +103,20 @@ class GoalDetector:
             assists.append(f"Player #{details['assist2PlayerId']}")
         assists_str = ", ".join(assists) if assists else "None"
 
+        # Determine which time to display based on condition
+        if time_condition == "remaining":
+            time_display = f"{play.get('timeRemaining', '')} remaining"
+        else:
+            time_display = play.get("timeInPeriod", "")
+
         return {
             "team": goal_team,
             "opponent": opponent,
             "period": period_ordinal,
-            "time": play.get("timeInPeriod", ""),
+            "time": time_display,
             "scorer": scorer,
-            "assists": assists_str
+            "assists": assists_str,
+            "condition": time_condition
         }
 
     def _get_period_ordinal(self, period: int) -> str:

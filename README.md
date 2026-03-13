@@ -284,6 +284,7 @@ hockey-420-tracker/
 ├── requirements.txt       # Python dependencies
 ├── .env.example           # Example configuration file
 ├── README.md              # This file
+├── ad_hoc_tests/          # manual investigation scripts
 └── notifiers/
     ├── __init__.py        # Notifier factory
     ├── base.py            # Abstract notifier class
@@ -297,6 +298,20 @@ hockey-420-tracker/
 - Schedule endpoint: `GET https://api-web.nhle.com/v1/schedule/{date}`
 - Play-by-play endpoint: `GET https://api-web.nhle.com/v1/game/{game_id}/play-by-play`
 - Date format: YYYY-MM-DD
+
+## Testing
+
+A proper test suite lives under the `tests/` directory.  It contains both
+unit tests and simple integration tests that hit the real NHL API.  To run
+the full suite:
+
+```bash
+pip3 install -r requirements.txt     # make sure dependencies are installed
+python3 -m unittest discover tests
+```
+
+The old one‑off scripts have been moved to `ad_hoc_tests/` for occasional
+exploration; they are not executed automatically.
 
 ## License
 
