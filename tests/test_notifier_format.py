@@ -13,7 +13,7 @@ class NotifierFormatTest(unittest.TestCase):
 
     def test_empty_list(self):
         msg = self.notifier.format_goal_message([])
-        self.assertIn("No 4:20 goals", msg)
+        self.assertEqual(msg, "")
 
     def test_multiple_goals(self):
         goals = [
@@ -26,6 +26,18 @@ class NotifierFormatTest(unittest.TestCase):
         # verify both names and the "vs" keyword appear in sequence.
         self.assertRegex(msg, r"A\W+vs\W+B")
         self.assertIn("Scorer: Player 1", msg)
+
+    def test_date_in_message(self):
+        goals = [{"team": "A", "opponent": "B", "period": "1st", "time": "04:20",
+                 "scorer": "Player 1", "assists": "None", "game_date": "2026-03-12"}]
+        msg = self.notifier.format_goal_message(goals)
+        self.assertIn("2026-03-12", msg)
+
+    def test_date_header_format(self):
+        goals = [{"team": "A", "opponent": "B", "period": "1st", "time": "04:20",
+                 "scorer": "Player 1", "assists": "None", "game_date": "2026-03-12"}]
+        msg = self.notifier.format_goal_message(goals)
+        self.assertRegex(msg, r"4:20 GOAL.*2026-03-12")
 
 
 if __name__ == "__main__":

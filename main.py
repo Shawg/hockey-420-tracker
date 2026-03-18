@@ -37,10 +37,7 @@ def main():
     games = client.get_games_for_date(target_date)
 
     if not games:
-        logger.info("No games found for yesterday")
-        message = "No NHL games were played yesterday."
-        notifier = notifiers.get_notifier()
-        notifier.send(message)
+        logger.info("No games found for yesterday, skipping notification")
         return
 
     all_420_goals = []
@@ -49,6 +46,15 @@ def main():
         game_id = game.get("id")
         if not game_id:
             continue
+
+        game_date = game.get("startTimeUTC", "")
+        if game_date:
+            try:
+                game_date = datetime.fromisoformat(game_date.replace("Z", "+00:00")).strftime("%Y-%m-%d")
+            except Exception:
+                game_date = target_date.strftime("%Y-%m-%d")
+        else:
+            game_date = target_date.strftime("%Y-%m-%d")
 
         teams = client.get_game_teams(game)
         logger.info(f"Checking game {game_id}: {teams['away']} @ {teams['home']}")
@@ -64,6 +70,7 @@ def main():
         )
 
         for goal in goals_420:
+            goal["game_date"] = game_date
             matching_plays = [
                 p for p in plays 
                 if p.get("typeDescKey") == "goal" and p.get("timeInPeriod") == goal["time"]

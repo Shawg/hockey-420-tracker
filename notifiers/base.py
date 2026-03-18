@@ -28,9 +28,13 @@ class Notifier(ABC):
     def format_goal_message(self, goals: List[Dict[str, Any]]) -> str:
         """Format a list of 4:20 goals into a readable message."""
         if not goals:
-            return "No 4:20 goals found for yesterday's games. 😔"
+            return ""
 
-        message = "🎯 **4:20 GOAL ALERT!** 🎯\n\n"
+        game_date = goals[0].get("game_date", "")
+        if game_date:
+            message = f"🎯 **4:20 GOAL ALERT for {game_date}!** 🎯\n\n"
+        else:
+            message = "🎯 **4:20 GOAL ALERT!** 🎯\n\n"
 
         for goal in goals:
             message += f"• **{goal['team']}** vs {goal['opponent']}\n"
