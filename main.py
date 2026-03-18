@@ -91,15 +91,16 @@ def main():
 
     logger.info(f"Found {len(all_420_goals)} total 4:20 goals")
 
-    notifier = notifiers.get_notifier()
-    message = notifier.format_goal_message(all_420_goals)
-
-    success = notifier.send(message)
-
-    if success:
-        logger.info("Notification sent successfully")
+    if all_420_goals:
+        notifier = notifiers.get_notifier()
+        message = notifier.format_goal_message(all_420_goals)
+        success = notifier.send(message)
+        if success:
+            logger.info("Notification sent successfully")
+        else:
+            logger.error("Failed to send notification")
     else:
-        logger.error("Failed to send notification")
+        logger.info("No 4:20 goals found, staying silent")
 
 
 if __name__ == "__main__":
