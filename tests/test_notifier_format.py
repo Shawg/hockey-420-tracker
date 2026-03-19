@@ -22,8 +22,6 @@ class NotifierFormatTest(unittest.TestCase):
         ]
         msg = self.notifier.format_goal_message(goals)
         self.assertIn("Total: 2 goal(s)", msg)
-        # teams may be split by a newline due to Markdown formatting; just
-        # verify both names and the "vs" keyword appear in sequence.
         self.assertRegex(msg, r"A\W+vs\W+B")
         self.assertIn("Scorer: Player 1", msg)
 
@@ -38,6 +36,34 @@ class NotifierFormatTest(unittest.TestCase):
                  "scorer": "Player 1", "assists": "None", "game_date": "2026-03-12"}]
         msg = self.notifier.format_goal_message(goals)
         self.assertRegex(msg, r"4:20 GOAL.*2026-03-12")
+
+    def test_weekly_summary_no_goals(self):
+        msg = self.notifier.format_weekly_summary(
+            "March 10", "March 16, 2026", 42, []
+        )
+        self.assertIn("March 10", msg)
+        self.assertIn("March 16, 2026", msg)
+        self.assertIn("42", msg)
+        self.assertIn("No 4:20 goals", msg)
+
+    def test_weekly_summary_with_goals(self):
+        goals = [
+            {"team": "A", "opponent": "B", "period": "1st", "time": "04:20",
+             "scorer": "Player 1", "assists": "None", "game_date": "2026-03-12"},
+            {"team": "C", "opponent": "D", "period": "2nd", "time": "04:20",
+             "scorer": "Player 2", "assists": "P1", "game_date": "2026-03-14"},
+        ]
+        msg = self.notifier.format_weekly_summary(
+            "March 10", "March 16, 2026", 50, goals
+        )
+        self.assertIn("March 10", msg)
+        self.assertIn("March 16, 2026", msg)
+        self.assertIn("50", msg)
+        self.assertIn("2 total 4:20 goal(s)", msg)
+        self.assertIn("2026-03-12", msg)
+        self.assertIn("2026-03-14", msg)
+        self.assertIn("Player 1", msg)
+        self.assertIn("Player 2", msg)
 
 
 if __name__ == "__main__":

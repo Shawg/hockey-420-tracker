@@ -46,3 +46,25 @@ class Notifier(ABC):
 
         message += f"Total: {len(goals)} goal(s) yesterday!"
         return message
+
+    def format_weekly_summary(
+        self,
+        week_start: str,
+        week_end: str,
+        total_games: int,
+        goals: list = None  # type: ignore[assignment]
+    ) -> str:
+        """Format a weekly summary message."""
+        if goals:
+            message = f"📊 Weekly Summary ({week_start} to {week_end})\n"
+            message += f"{len(goals)} total 4:20 goal(s) found across {total_games} games!\n\n"
+            
+            for goal in goals:
+                message += f"• {goal.get('game_date', 'Unknown')}: "
+                message += f"{goal['team']} vs {goal['opponent']}\n"
+                message += f"  Period {goal['period']} at {goal['time']}\n"
+                message += f"  Scorer: {goal['scorer']}\n\n"
+            
+            return message
+        else:
+            return f"📊 Weekly Summary ({week_start} to {week_end})\nNo 4:20 goals found across {total_games} games played"

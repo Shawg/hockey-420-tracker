@@ -37,6 +37,36 @@ class GoalDetectorUnitTest(unittest.TestCase):
         goals = self.detector.find_420_goals(plays, self.home, self.away)
         self.assertEqual(goals, [])
 
+    def test_ot_period(self):
+        plays = [
+            {"typeDescKey": "goal", "timeInPeriod": "04:20", "timeRemaining": "15:40",
+             "details": {"eventOwnerTeamId": 1, "scoringPlayerId": 10},
+             "periodDescriptor": {"number": 4}}  # OT
+        ]
+        goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
+        self.assertEqual(len(goals), 1)
+        self.assertEqual(goals[0]["period"], "OT")
+
+    def test_2ot_period(self):
+        plays = [
+            {"typeDescKey": "goal", "timeInPeriod": "04:20", "timeRemaining": "15:40",
+             "details": {"eventOwnerTeamId": 1, "scoringPlayerId": 10},
+             "periodDescriptor": {"number": 5}}  # 2OT
+        ]
+        goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
+        self.assertEqual(len(goals), 1)
+        self.assertEqual(goals[0]["period"], "2OT")
+
+    def test_3ot_period(self):
+        plays = [
+            {"typeDescKey": "goal", "timeInPeriod": "04:20", "timeRemaining": "15:40",
+             "details": {"eventOwnerTeamId": 1, "scoringPlayerId": 10},
+             "periodDescriptor": {"number": 6}}  # 3OT
+        ]
+        goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
+        self.assertEqual(len(goals), 1)
+        self.assertEqual(goals[0]["period"], "3OT")
+
 
 if __name__ == "__main__":
     unittest.main()
