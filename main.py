@@ -165,6 +165,7 @@ def main():
         return
 
     all_420_goals = []
+    all_goalie_goals = []
 
     for game in games:
         game_id = game.get("id")
@@ -213,17 +214,47 @@ def main():
 
         all_420_goals.extend(goals_420)
 
-    logger.info(f"Found {len(all_420_goals)} total 4:20 goals")
+        goalie_goals = detector.find_goalie_goals(
+            plays,
+            client,
+            teams["home"],
+            teams["away"],
+            int(teams.get("home_id", 0)),
+            int(teams.get("away_id", 0))
+        )
 
-    if all_420_goals:
-        message = notifier.format_goal_message(all_420_goals)
+        for goal in goalie_goals:
+            goal["game_date"] = game_date
+            matching_plays = [
+                p for p in plays
+                if p.get("typeDescKey") == "goal" and p.get("periodDescriptor", {}).get("number") == goal.get("period_num")
+            ]
+            if matching_plays:
+                d = matching_plays[0].get("details", {})
+                scorer_id = d.get("scoringPlayerId", 0)
+                goal["scorer"] = client.get_player_name(scorer_id)
+                
+                assists = []
+                if d.get("assist1PlayerId"):
+                    assists.append(client.get_player_name(d["assist1PlayerId"]))
+                if d.get("assist2PlayerId"):
+                    assists.append(client.get_player_name(d["assist2PlayerId"]))
+                goal["assists"] = ", ".join(assists) if assists else "None"
+
+        all_goalie_goals.extend(goalie_goals)
+
+    logger.info(f"Found {len(all_420_goals)} total 4:20 goals")
+    logger.info(f"Found {len(all_goalie_goals)} total goalie goals")
+
+    if all_420_goals or all_goalie_goals:
+        message = notifier.format_goal_message(all_420_goals, all_goalie_goals)
         success = notifier.send(message)
         if success:
             logger.info("Daily alert sent successfully")
         else:
             logger.error("Failed to send daily alert")
     else:
-        logger.info("No 4:20 goals found, staying silent")
+        logger.info("No 4:20 goals or goalie goals found, staying silent")
 
 
 if __name__ == "__main__":

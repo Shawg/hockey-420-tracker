@@ -119,6 +119,89 @@ class GoalDetector:
             "condition": time_condition
         }
 
+    def find_goalie_goals(
+        self,
+        plays: List[Dict[str, Any]],
+        nhl_client,
+        home_team: str,
+        away_team: str,
+        home_id: int = 0,
+        away_id: int = 0
+    ) -> List[Dict[str, Any]]:
+        """
+        Find all goals scored by goalies.
+        
+        Args:
+            plays: List of plays from play-by-play data.
+            nhl_client: NHLClient instance for fetching player positions.
+            home_team: Name of the home team.
+            away_team: Name of the away team.
+            home_id: ID of the home team.
+            away_id: ID of the away team.
+            
+        Returns:
+            List of goal dictionaries for goals scored by goalies.
+        """
+        goalie_goals = []
+        
+        for play in plays:
+            if not self._is_goal(play):
+                continue
+            
+            details = play.get("details", {})
+            scorer_id = details.get("scoringPlayerId", 0)
+            player_pos = nhl_client.get_player_position(scorer_id)
+            
+            if player_pos == "G":
+                goal_info = self._extract_goalie_goal_info(
+                    play, home_team, away_team, home_id, away_id
+                )
+                goalie_goals.append(goal_info)
+                logger.info(f"Found goalie goal: {goal_info['team']}")
+        
+        return goalie_goals
+
+    def _extract_goalie_goal_info(
+        self,
+        play: Dict[str, Any],
+        home_team: str,
+        away_team: str,
+        home_id: int = 0,
+        away_id: int = 0
+    ) -> Dict[str, Any]:
+        """Extract relevant information from a goal scored by a goalie."""
+        details = play.get("details", {})
+        team_id = details.get("eventOwnerTeamId", 0)
+        
+        goal_team = home_team
+        opponent = away_team
+        if team_id != home_id:
+            goal_team = away_team
+            opponent = home_team
+        
+        period_desc = play.get("periodDescriptor", {})
+        period = period_desc.get("number", 1)
+        period_ordinal = self._get_period_ordinal(period)
+        
+        scorer_id = details.get("scoringPlayerId", 0)
+        scorer = f"Player #{scorer_id}"
+        
+        assists = []
+        if details.get("assist1PlayerId"):
+            assists.append(f"Player #{details['assist1PlayerId']}")
+        if details.get("assist2PlayerId"):
+            assists.append(f"Player #{details['assist2PlayerId']}")
+        assists_str = ", ".join(assists) if assists else "None"
+        
+        return {
+            "team": goal_team,
+            "opponent": opponent,
+            "period": period_ordinal,
+            "period_num": period,
+            "scorer": scorer,
+            "assists": assists_str
+        }
+
     def _get_period_ordinal(self, period: int) -> str:
         """Convert period number to ordinal string."""
         ordinals = {

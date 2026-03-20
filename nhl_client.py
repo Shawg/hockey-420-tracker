@@ -135,3 +135,15 @@ class NHLClient:
         except Exception:
             pass
         return f"Player #{player_id}"
+
+    def get_player_position(self, player_id: int) -> str:
+        """Get player position (G, D, F, etc.) from player ID."""
+        url = f"https://api-web.nhle.com/v1/player/{player_id}/landing"
+        try:
+            response = self.session.get(url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("position", "")
+        except Exception:
+            pass
+        return ""

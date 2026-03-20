@@ -65,6 +65,45 @@ class NotifierFormatTest(unittest.TestCase):
         self.assertIn("Player 1", msg)
         self.assertIn("Player 2", msg)
 
+    def test_combined_message_with_goalie_goals(self):
+        goals_420 = [
+            {"team": "A", "opponent": "B", "period": "1st", "time": "04:20",
+             "scorer": "Player 1", "assists": "None", "game_date": "2026-03-19"}
+        ]
+        goalie_goals = [
+            {"team": "C", "opponent": "D", "period": "3rd",
+             "scorer": "Bobrovsky", "assists": "None", "game_date": "2026-03-19"}
+        ]
+        msg = self.notifier.format_goal_message(goals_420, goalie_goals)
+        self.assertIn("4:20 GOAL ALERT", msg)
+        self.assertIn("GOALIE GOAL ALERT", msg)
+        self.assertIn("1 4:20 goal(s) + 1 goalie goal(s)", msg)
+        self.assertIn("Bobrovsky", msg)
+
+    def test_goalie_goals_only(self):
+        goalie_goals = [
+            {"team": "A", "opponent": "B", "period": "3rd",
+             "scorer": "Fleury", "assists": "None", "game_date": "2026-03-19"}
+        ]
+        msg = self.notifier.format_goal_message([], goalie_goals)
+        self.assertIn("GOALIE GOAL ALERT", msg)
+        self.assertNotIn("4:20", msg)
+        self.assertIn("1 goalie goal(s)", msg)
+        self.assertIn("Fleury", msg)
+
+    def test_no_goals_no_goalie_goals(self):
+        msg = self.notifier.format_goal_message([], [])
+        self.assertEqual(msg, "")
+
+    def test_goalie_goals_no_time_shown(self):
+        goalie_goals = [
+            {"team": "A", "opponent": "B", "period": "2nd",
+             "scorer": "Price", "assists": "None"}
+        ]
+        msg = self.notifier.format_goal_message([], goalie_goals)
+        self.assertIn("Period 2nd", msg)
+        self.assertNotIn("time", msg.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
