@@ -310,9 +310,19 @@ API.
 Run the unit tests (also what CI runs on every push and pull request):
 
 ```bash
-pip3 install -r requirements.txt     # make sure dependencies are installed
+pip3 install -r requirements.txt -r requirements-dev.txt   # runtime + coverage
 python3 -m unittest discover -s tests -v
 ```
+
+Check coverage locally:
+
+```bash
+coverage run --source=. --omit="tests/*,ad_hoc_tests/*" -m unittest discover -s tests
+coverage report -m
+coverage html   # opens in htmlcov/index.html
+```
+
+CI enforces a **90% coverage minimum** and uploads the HTML report as a workflow artifact.
 
 Live integration tests are opt-in so they don't depend on the NHL API from CI:
 

@@ -27,9 +27,35 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Run unit tests
+      - name: Run unit tests with coverage
         env:
           RUN_INTEGRATION_TESTS: "0"
-        run: python -m unittest discover -s tests -v
+        run: |
+          coverage run --source=. --omit="tests/*,ad_hoc_tests/*" -m unittest discover -s tests -v
+          coverage report -m
+          coverage html
+
+      - name: Enforce coverage threshold
+        run: coverage report --fail-under=90
+
+      - name: Add coverage summary
+        if: always()
+        run: |
+          if [ -f .coverage ]; then
+            {
+              echo "### Coverage (Python ${{ matrix.python-version }})"
+              echo '```'
+              coverage report
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage HTML report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-html-py${{ matrix.python-version }}
+          path: htmlcov/
+          if-no-files-found: ignore
