@@ -64,6 +64,30 @@ class NHLClientTest(unittest.TestCase):
         games = self.client.get_games_for_date(datetime(2026, 3, 11))
         self.assertEqual(len(games), 1)
 
+    def test_get_games_for_date_uses_30s_timeout(self):
+        timeouts = []
+
+        def fake_get(url, timeout):
+            timeouts.append(timeout)
+            return DummyResponse({"gameWeek": []})
+
+        self.client.session.get = fake_get
+        self.client.get_games_for_date(datetime(2026, 3, 11))
+
+        self.assertEqual(timeouts, [30])
+
+    def test_player_lookup_uses_10s_timeout(self):
+        timeouts = []
+
+        def fake_get(url, timeout):
+            timeouts.append(timeout)
+            return DummyResponse({"position": "G"})
+
+        self.client.session.get = fake_get
+        self.client.get_player_position(8478009)
+
+        self.assertEqual(timeouts, [10])
+
     @patch.object(nhl_client.NHLClient, 'get_play_by_play', return_value=None)
     def test_get_all_plays_none_returns_empty(self, mock_pbp):
         self.assertEqual(self.client.get_all_plays(123), [])
