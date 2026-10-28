@@ -301,13 +301,21 @@ hockey-420-tracker/
 
 ## Testing
 
-A proper test suite lives under the `tests/` directory.  It contains both
-unit tests and simple integration tests that hit the real NHL API.  To run
-the full suite:
+A proper test suite lives under the `tests/` directory. It contains unit tests
+(mocked, no network required) and live integration tests that hit the real NHL
+API.
+
+Run the unit tests (also what CI runs on every push and pull request):
 
 ```bash
 pip3 install -r requirements.txt     # make sure dependencies are installed
-python3 -m unittest discover tests
+python3 -m unittest discover -s tests -v
+```
+
+Live integration tests are opt-in so they don't depend on the NHL API from CI:
+
+```bash
+RUN_INTEGRATION_TESTS=1 python3 -m unittest discover -s tests -v
 ```
 
 The old one‑off scripts have been moved to `ad_hoc_tests/` for occasional

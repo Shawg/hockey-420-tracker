@@ -1,8 +1,12 @@
+import os
 import unittest
 from datetime import datetime, timedelta
 import nhl_client
 
+RUN_INTEGRATION = os.getenv("RUN_INTEGRATION_TESTS") == "1"
 
+
+@unittest.skipUnless(RUN_INTEGRATION, "set RUN_INTEGRATION_TESTS=1 to run live NHL API tests")
 class NHLClientIntegrationTest(unittest.TestCase):
     def setUp(self):
         self.client = nhl_client.NHLClient()

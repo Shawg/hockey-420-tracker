@@ -145,6 +145,61 @@ class GoalDetectorUnitTest(unittest.TestCase):
         self.assertEqual(goals[0]["team"], "AwayTeam")
         self.assertEqual(goals[0]["opponent"], "HomeTeam")
 
+    def test_420_goal_away_team(self):
+        plays = [self.make_goal("04:20", "15:40", team_id=2)]
+        goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
+        self.assertEqual(len(goals), 1)
+        self.assertEqual(goals[0]["team"], "AwayTeam")
+        self.assertEqual(goals[0]["opponent"], "HomeTeam")
+
+    def test_420_goal_includes_assists(self):
+        plays = [{
+            "typeDescKey": "goal",
+            "timeInPeriod": "04:20",
+            "timeRemaining": "15:40",
+            "details": {
+                "eventOwnerTeamId": 1,
+                "scoringPlayerId": 10,
+                "assist1PlayerId": 11,
+                "assist2PlayerId": 12,
+            },
+            "periodDescriptor": {"number": 2},
+        }]
+        goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
+        self.assertEqual(goals[0]["assists"], "Player #11, Player #12")
+        self.assertEqual(goals[0]["period"], "2nd")
+
+    def test_ignores_goal_at_other_time(self):
+        plays = [self.make_goal("05:00", "15:00", team_id=1)]
+        goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
+        self.assertEqual(goals, [])
+
+    def test_missing_time_fields_are_ignored(self):
+        plays = [{
+            "typeDescKey": "goal",
+            "details": {"eventOwnerTeamId": 1, "scoringPlayerId": 10},
+            "periodDescriptor": {"number": 1},
+        }]
+        goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
+        self.assertEqual(goals, [])
+
+    def test_goal_with_missing_details_does_not_crash(self):
+        plays = [{
+            "typeDescKey": "goal",
+            "timeInPeriod": "04:20",
+            "timeRemaining": "15:40",
+        }]
+        goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
+        self.assertEqual(len(goals), 1)
+        self.assertEqual(goals[0]["scorer"], "Player #0")
+        self.assertEqual(goals[0]["period"], "1st")
+
+    def test_empty_plays(self):
+        self.assertEqual(self.detector.find_420_goals([], self.home, self.away), [])
+
+    def test_period_ordinal_fallback(self):
+        self.assertEqual(self.detector._get_period_ordinal(7), "7th")
+
 
 if __name__ == "__main__":
     unittest.main()

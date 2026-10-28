@@ -1,8 +1,11 @@
+import os
 import unittest
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 import main
 import nhl_client
+
+RUN_INTEGRATION = os.getenv("RUN_INTEGRATION_TESTS") == "1"
 
 
 class HelperFunctionTest(unittest.TestCase):
@@ -40,12 +43,14 @@ class HelperFunctionTest(unittest.TestCase):
 
 
 class MainIntegrationTest(unittest.TestCase):
+    @unittest.skipUnless(RUN_INTEGRATION, "set RUN_INTEGRATION_TESTS=1 to run live NHL API tests")
     def test_main_runs_without_error(self):
         try:
             main.main()
         except Exception as e:
             self.fail(f"main() raised an exception: {e}")
 
+    @unittest.skipUnless(RUN_INTEGRATION, "set RUN_INTEGRATION_TESTS=1 to run live NHL API tests")
     def test_main_with_specific_date(self):
         original = main.get_yesterday
         target = datetime.now() - timedelta(days=1)
