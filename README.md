@@ -1,5 +1,7 @@
 # 4:20 Goal Tracker
 
+[![Tests](https://github.com/Shawg/hockey-420-tracker/actions/workflows/tests.yml/badge.svg)](https://github.com/Shawg/hockey-420-tracker/actions/workflows/tests.yml)
+
 A Raspberry Pi-based service that monitors NHL games and notifies your fantasy hockey league whenever a goal is scored at exactly 4:20 remaining in any period.
 
 ## Overview
