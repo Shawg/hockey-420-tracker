@@ -19,6 +19,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def enrich_goal_with_player_names(goal: dict, client) -> None:
+    """Resolve scorer and assist names from the player IDs on a goal."""
+    goal["scorer"] = client.get_player_name(goal.get("scoring_player_id", 0))
+
+    assist_ids = [goal.get("assist1_player_id"), goal.get("assist2_player_id")]
+    assists = [client.get_player_name(player_id) for player_id in assist_ids if player_id]
+    goal["assists"] = ", ".join(assists) if assists else "None"
+
+
 def get_yesterday() -> datetime:
     """Get yesterday's date."""
     return datetime.now() - timedelta(days=1)
@@ -101,22 +110,8 @@ def collect_weekly_goals(client, detector, start: datetime, end: datetime) -> li
             
             for goal in goals:
                 goal["game_date"] = game_date
-                matching_plays = [
-                    p for p in plays
-                    if p.get("typeDescKey") == "goal" and p.get("timeInPeriod") == goal["time"]
-                ]
-                if matching_plays:
-                    d = matching_plays[0].get("details", {})
-                    scorer_id = d.get("scoringPlayerId", 0)
-                    goal["scorer"] = client.get_player_name(scorer_id)
-                    
-                    assists = []
-                    if d.get("assist1PlayerId"):
-                        assists.append(client.get_player_name(d["assist1PlayerId"]))
-                    if d.get("assist2PlayerId"):
-                        assists.append(client.get_player_name(d["assist2PlayerId"]))
-                    goal["assists"] = ", ".join(assists) if assists else "None"
-            
+                enrich_goal_with_player_names(goal, client)
+
             all_goals.extend(goals)
     
     return all_goals
@@ -196,21 +191,7 @@ def main():
 
         for goal in goals_420:
             goal["game_date"] = game_date
-            matching_plays = [
-                p for p in plays 
-                if p.get("typeDescKey") == "goal" and p.get("timeInPeriod") == goal["time"]
-            ]
-            if matching_plays:
-                d = matching_plays[0].get("details", {})
-                scorer_id = d.get("scoringPlayerId", 0)
-                goal["scorer"] = client.get_player_name(scorer_id)
-                
-                assists = []
-                if d.get("assist1PlayerId"):
-                    assists.append(client.get_player_name(d["assist1PlayerId"]))
-                if d.get("assist2PlayerId"):
-                    assists.append(client.get_player_name(d["assist2PlayerId"]))
-                goal["assists"] = ", ".join(assists) if assists else "None"
+            enrich_goal_with_player_names(goal, client)
 
         all_420_goals.extend(goals_420)
 
@@ -225,21 +206,7 @@ def main():
 
         for goal in goalie_goals:
             goal["game_date"] = game_date
-            matching_plays = [
-                p for p in plays
-                if p.get("typeDescKey") == "goal" and p.get("periodDescriptor", {}).get("number") == goal.get("period_num")
-            ]
-            if matching_plays:
-                d = matching_plays[0].get("details", {})
-                scorer_id = d.get("scoringPlayerId", 0)
-                goal["scorer"] = client.get_player_name(scorer_id)
-                
-                assists = []
-                if d.get("assist1PlayerId"):
-                    assists.append(client.get_player_name(d["assist1PlayerId"]))
-                if d.get("assist2PlayerId"):
-                    assists.append(client.get_player_name(d["assist2PlayerId"]))
-                goal["assists"] = ", ".join(assists) if assists else "None"
+            enrich_goal_with_player_names(goal, client)
 
         all_goalie_goals.extend(goalie_goals)
 

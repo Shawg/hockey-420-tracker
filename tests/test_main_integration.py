@@ -144,6 +144,47 @@ class MainIntegrationTest(unittest.TestCase):
         mock_notifier_instance.send.assert_called_once()
 
 
+    @patch('main.is_monday')
+    @patch('main.notifiers.get_notifier')
+    @patch.object(nhl_client.NHLClient, 'get_player_position')
+    @patch.object(nhl_client.NHLClient, 'get_player_name')
+    @patch.object(nhl_client.NHLClient, 'get_all_plays')
+    @patch.object(nhl_client.NHLClient, 'get_games_for_date')
+    def test_remaining_time_goal_gets_scorer_and_assist_names(
+        self, mock_get_games, mock_get_plays, mock_get_name,
+        mock_get_position, mock_get_notifier, mock_is_monday
+    ):
+        mock_is_monday.return_value = False
+        mock_get_games.return_value = [
+            {"id": 2026020364,
+             "homeTeam": {"commonName": {"default": "Maple Leafs"}, "id": 10},
+             "awayTeam": {"commonName": {"default": "Blue Jackets"}, "id": 20},
+             "startTimeUTC": "2026-11-22T00:00:00Z"}
+        ]
+        mock_get_plays.return_value = [
+            {"typeDescKey": "goal", "timeInPeriod": "15:40", "timeRemaining": "04:20",
+             "details": {"eventOwnerTeamId": 20, "scoringPlayerId": 8482720,
+                         "assist1PlayerId": 11},
+             "periodDescriptor": {"number": 3}}
+        ]
+        mock_get_name.side_effect = {8482720: "Matthew Knies", 11: "Adam Fantilli"}.get
+        mock_get_position.return_value = "L"
+        mock_notifier_instance = MagicMock()
+        mock_get_notifier.return_value = mock_notifier_instance
+
+        main.main()
+
+        mock_notifier_instance.send.assert_called_once()
+        goals_arg, goalie_goals_arg = mock_notifier_instance.format_goal_message.call_args[0]
+        self.assertEqual(goalie_goals_arg, [])
+        self.assertEqual(len(goals_arg), 1)
+        self.assertEqual(goals_arg[0]["team"], "Blue Jackets")
+        self.assertEqual(goals_arg[0]["period"], "3rd")
+        self.assertEqual(goals_arg[0]["time"], "04:20 remaining")
+        self.assertEqual(goals_arg[0]["scorer"], "Matthew Knies")
+        self.assertEqual(goals_arg[0]["assists"], "Adam Fantilli")
+
+
 class HelperFunctionDirectTest(unittest.TestCase):
     @patch.object(nhl_client.NHLClient, 'get_games_for_date')
     def test_check_week_had_games_true(self, mock_get_games):
@@ -172,6 +213,38 @@ class HelperFunctionDirectTest(unittest.TestCase):
         
         self.assertFalse(had_games)
         self.assertEqual(total, 0)
+
+
+class GoalEnrichmentTest(unittest.TestCase):
+    def test_enrich_goal_with_player_names(self):
+        goal = {
+            "scoring_player_id": 10,
+            "assist1_player_id": 11,
+            "assist2_player_id": None,
+        }
+        client = MagicMock()
+        client.get_player_name.side_effect = lambda player_id: {
+            10: "Scorer", 11: "Helper"
+        }[player_id]
+
+        main.enrich_goal_with_player_names(goal, client)
+
+        self.assertEqual(goal["scorer"], "Scorer")
+        self.assertEqual(goal["assists"], "Helper")
+
+    def test_enrich_goal_without_assists(self):
+        goal = {
+            "scoring_player_id": 10,
+            "assist1_player_id": None,
+            "assist2_player_id": None,
+        }
+        client = MagicMock()
+        client.get_player_name.return_value = "Solo"
+
+        main.enrich_goal_with_player_names(goal, client)
+
+        self.assertEqual(goal["scorer"], "Solo")
+        self.assertEqual(goal["assists"], "None")
 
 
 if __name__ == "__main__":
