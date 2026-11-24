@@ -23,29 +23,44 @@ class NHLClientTest(unittest.TestCase):
     def setUp(self):
         self.client = nhl_client.NHLClient()
 
-    def test_get_games_for_date_filters_week(self):
-        # prepare fake schedule: two games, one on target date and one later
-        date = datetime(2026, 3, 11)
+    def test_get_games_for_date_uses_schedule_day_not_utc_date(self):
+        # A 7 PM ET game starts at 00:00Z the following day. The schedule
+        # groups it under its local game day, so it must be returned for
+        # that day instead of being dropped by a startTimeUTC date filter.
+        target = datetime(2026, 11, 21)
         schedule = {
             "gameWeek": [
                 {
+                    "date": "2026-11-21",
                     "games": [
-                        {"id": 1, "startTimeUTC": "2026-03-11T20:00:00Z"},
-                        {"id": 2, "startTimeUTC": "2026-03-14T20:00:00Z"},
-                    ]
-                }
+                        {"id": 1, "startTimeUTC": "2026-11-22T00:00:00Z"},
+                        {"id": 2, "startTimeUTC": "2026-11-21T18:00:00Z"},
+                    ],
+                },
+                {
+                    "date": "2026-11-22",
+                    "games": [
+                        {"id": 3, "startTimeUTC": "2026-11-22T22:00:00Z"},
+                    ],
+                },
             ]
         }
 
-        # monkeypatch the session.get method to return our dummy response
-        def fake_get(url, timeout):
-            return DummyResponse(schedule)
+        self.client.session.get = lambda url, timeout: DummyResponse(schedule)
 
-        self.client.session.get = fake_get
+        games = self.client.get_games_for_date(target)
+        self.assertEqual([g["id"] for g in games], [1, 2])
 
-        games = self.client.get_games_for_date(date)
-        self.assertEqual(len(games), 1)
-        self.assertEqual(games[0]["id"], 1)
+    def test_get_games_for_date_returns_empty_when_day_absent(self):
+        schedule = {
+            "gameWeek": [
+                {"date": "2026-03-14", "games": [{"id": 1}]},
+            ]
+        }
+
+        self.client.session.get = lambda url, timeout: DummyResponse(schedule)
+
+        self.assertEqual(self.client.get_games_for_date(datetime(2026, 3, 11)), [])
 
     def test_get_games_for_date_network_error_returns_empty(self):
         def fake_get(url, timeout):
@@ -57,7 +72,7 @@ class NHLClientTest(unittest.TestCase):
         self.assertEqual(games, [])
 
     def test_get_games_for_date_keeps_games_without_start_time(self):
-        schedule = {"gameWeek": [{"games": [{"id": 1}]}]}
+        schedule = {"gameWeek": [{"date": "2026-03-11", "games": [{"id": 1}]}]}
 
         self.client.session.get = lambda url, timeout: DummyResponse(schedule)
 

@@ -116,7 +116,10 @@ class GoalDetector:
             "time": time_display,
             "scorer": scorer,
             "assists": assists_str,
-            "condition": time_condition
+            "condition": time_condition,
+            "scoring_player_id": scorer_id,
+            "assist1_player_id": details.get("assist1PlayerId"),
+            "assist2_player_id": details.get("assist2PlayerId"),
         }
 
     def find_goalie_goals(
@@ -199,7 +202,10 @@ class GoalDetector:
             "period": period_ordinal,
             "period_num": period,
             "scorer": scorer,
-            "assists": assists_str
+            "assists": assists_str,
+            "scoring_player_id": scorer_id,
+            "assist1_player_id": details.get("assist1PlayerId"),
+            "assist2_player_id": details.get("assist2PlayerId"),
         }
 
     def _get_period_ordinal(self, period: int) -> str:

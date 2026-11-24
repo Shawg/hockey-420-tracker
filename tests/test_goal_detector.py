@@ -31,6 +31,7 @@ class GoalDetectorUnitTest(unittest.TestCase):
         self.assertEqual(len(goals), 1)
         self.assertIn("remaining", goals[0]["time"])
         self.assertEqual(goals[0]["condition"], "remaining")
+        self.assertEqual(goals[0]["scoring_player_id"], 10)
 
     def test_ignore_non_goal(self):
         plays = [{"typeDescKey": "shot", "timeInPeriod": "04:20", "timeRemaining": "04:20"}]
@@ -84,6 +85,7 @@ class GoalDetectorUnitTest(unittest.TestCase):
         self.assertEqual(len(goals), 1)
         self.assertEqual(goals[0]["team"], "HomeTeam")
         self.assertEqual(goals[0]["period"], "1st")
+        self.assertEqual(goals[0]["scoring_player_id"], 10)
 
     def test_find_goalie_goals_ignores_regular_player(self):
         class MockClient:
@@ -168,6 +170,9 @@ class GoalDetectorUnitTest(unittest.TestCase):
         goals = self.detector.find_420_goals(plays, self.home, self.away, home_id=1, away_id=2)
         self.assertEqual(goals[0]["assists"], "Player #11, Player #12")
         self.assertEqual(goals[0]["period"], "2nd")
+        self.assertEqual(goals[0]["scoring_player_id"], 10)
+        self.assertEqual(goals[0]["assist1_player_id"], 11)
+        self.assertEqual(goals[0]["assist2_player_id"], 12)
 
     def test_ignores_goal_at_other_time(self):
         plays = [self.make_goal("05:00", "15:00", team_id=1)]
