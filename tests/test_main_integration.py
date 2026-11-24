@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 import main
 import nhl_client
+from goal_detector import GoalDetector
 
 RUN_INTEGRATION = os.getenv("RUN_INTEGRATION_TESTS") == "1"
 
@@ -144,6 +145,7 @@ class MainIntegrationTest(unittest.TestCase):
         mock_notifier_instance.send.assert_called_once()
 
 
+    @patch('main.get_yesterday')
     @patch('main.is_monday')
     @patch('main.notifiers.get_notifier')
     @patch.object(nhl_client.NHLClient, 'get_player_position')
@@ -152,8 +154,10 @@ class MainIntegrationTest(unittest.TestCase):
     @patch.object(nhl_client.NHLClient, 'get_games_for_date')
     def test_remaining_time_goal_gets_scorer_and_assist_names(
         self, mock_get_games, mock_get_plays, mock_get_name,
-        mock_get_position, mock_get_notifier, mock_is_monday
+        mock_get_position, mock_get_notifier, mock_is_monday,
+        mock_get_yesterday
     ):
+        mock_get_yesterday.return_value = datetime(2026, 11, 21, 10, 0)
         mock_is_monday.return_value = False
         mock_get_games.return_value = [
             {"id": 2026020364,
@@ -183,6 +187,7 @@ class MainIntegrationTest(unittest.TestCase):
         self.assertEqual(goals_arg[0]["time"], "04:20 remaining")
         self.assertEqual(goals_arg[0]["scorer"], "Matthew Knies")
         self.assertEqual(goals_arg[0]["assists"], "Adam Fantilli")
+        self.assertEqual(goals_arg[0]["game_date"], "2026-11-21")
 
 
 class HelperFunctionDirectTest(unittest.TestCase):
@@ -213,6 +218,34 @@ class HelperFunctionDirectTest(unittest.TestCase):
         
         self.assertFalse(had_games)
         self.assertEqual(total, 0)
+
+
+class WeeklyGoalDateTest(unittest.TestCase):
+    @patch.object(nhl_client.NHLClient, 'get_player_name', return_value="Scorer")
+    @patch.object(nhl_client.NHLClient, 'get_all_plays')
+    @patch.object(nhl_client.NHLClient, 'get_games_for_date')
+    def test_weekly_goals_use_game_day_not_utc_start(
+        self, mock_get_games, mock_get_plays, mock_get_name
+    ):
+        mock_get_games.return_value = [
+            {"id": 2026020364, "startTimeUTC": "2026-11-22T00:00:00Z",
+             "homeTeam": {"id": 1, "commonName": {"default": "Maple Leafs"}},
+             "awayTeam": {"id": 2, "commonName": {"default": "Blue Jackets"}}}
+        ]
+        mock_get_plays.return_value = [
+            {"typeDescKey": "goal", "timeInPeriod": "15:40", "timeRemaining": "04:20",
+             "details": {"eventOwnerTeamId": 2, "scoringPlayerId": 8482720},
+             "periodDescriptor": {"number": 3}}
+        ]
+
+        client = nhl_client.NHLClient()
+        goals = main.collect_weekly_goals(
+            client, GoalDetector(), datetime(2026, 11, 21), datetime(2026, 11, 21)
+        )
+
+        self.assertEqual(len(goals), 1)
+        self.assertEqual(goals[0]["game_date"], "2026-11-21")
+        self.assertEqual(goals[0]["scorer"], "Scorer")
 
 
 class GoalEnrichmentTest(unittest.TestCase):

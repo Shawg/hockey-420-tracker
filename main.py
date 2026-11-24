@@ -87,16 +87,12 @@ def collect_weekly_goals(client, detector, start: datetime, end: datetime) -> li
             game_id = game.get("id")
             if not game_id:
                 continue
-            
-            game_date_str = game.get("startTimeUTC", "")
-            if game_date_str:
-                try:
-                    game_date = datetime.fromisoformat(game_date_str.replace("Z", "+00:00")).strftime("%Y-%m-%d")
-                except Exception:
-                    game_date = date.strftime("%Y-%m-%d")
-            else:
-                game_date = date.strftime("%Y-%m-%d")
-            
+
+            # Each game was fetched from this day's schedule entry, so the
+            # game day is the alert date. startTimeUTC rolls over to the next
+            # UTC date for evening games and would mislabel them.
+            game_date = date.strftime("%Y-%m-%d")
+
             teams = client.get_game_teams(game)
             plays = client.get_all_plays(game_id)
             
@@ -167,14 +163,7 @@ def main():
         if not game_id:
             continue
 
-        game_date = game.get("startTimeUTC", "")
-        if game_date:
-            try:
-                game_date = datetime.fromisoformat(game_date.replace("Z", "+00:00")).strftime("%Y-%m-%d")
-            except Exception:
-                game_date = target_date.strftime("%Y-%m-%d")
-        else:
-            game_date = target_date.strftime("%Y-%m-%d")
+        game_date = target_date.strftime("%Y-%m-%d")
 
         teams = client.get_game_teams(game)
         logger.info(f"Checking game {game_id}: {teams['away']} @ {teams['home']}")
